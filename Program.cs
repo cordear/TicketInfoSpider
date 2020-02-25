@@ -4,7 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
-using System.Threading;
+using System.Threading.Tasks;
 using Newtonsoft.Json;
 
 namespace TicketInfoSpider
@@ -18,11 +18,12 @@ namespace TicketInfoSpider
 
         private static void Main()
         {
-            var start = DateTime.UtcNow;
+            var start = DateTime.UtcNow; // Start time
             Logger("Trying to open csv file...");
             var dataTable = CsvLoader.Csv2DataTable("test.csv");
             Logger("csv has been loaded into memory.");
             var successfulRequest = dataTable.Rows.Count;
+            var completeNumber = 0;
             Console.WriteLine($"Rows:{successfulRequest}");
             Logger("Trying to get valid code, please wait...");
             MainClient.DefaultRequestHeaders.Add("User-Agent",
@@ -37,27 +38,25 @@ namespace TicketInfoSpider
             var validCode = GetValidCode();
             foreach (DataRow row in dataTable.Rows)
             {
-                var jsonData = MainClient.SendAsync(new TicketDataRequestMessage(row[0].ToString(), validCode,
-                    row[1].ToString())).Result.Content.ReadAsStringAsync().Result;
+                completeNumber++;
                 var ticketDataCollection =
-                    JsonConvert.DeserializeObject<TicketDataCollection>(jsonData);
+                    TicketDataRequestAsync(row[0].ToString(), validCode, row[1].ToString()).Result;
                 if (ticketDataCollection == null || ticketDataCollection.rtnCode == "-1")
                 {
-                    Logger($"Failed:TicketId={row[0]}");
+                    Logger($"FAILED : TicketId={row[0]} [{completeNumber}/{dataTable.Rows.Count}]");
                     successfulRequest -= 1;
                     continue;
                 }
 
                 foreach (var ticket in ticketDataCollection.rtnData)
-                    PdfDownLoader(ticket.pdfurl, $"{ticket.fpdm}_{ticket.fphm}");
-                Logger($"SUCCESS:TicketId={row[0]}");
-                Thread.Sleep(new Random().Next(0, 50));
+                    PdfDownLoadAsync(ticket.pdfurl, $"{ticket.fpdm}_{ticket.fphm}");
+                Logger($"SUCCESS: TicketId={row[0]} [{completeNumber}/{dataTable.Rows.Count}]");
             }
 
             var finish = DateTime.UtcNow;
             Logger("Task finished");
             Console.WriteLine(
-                $"Total Rows:{dataTable.Rows.Count}\tSuccessful Request:{successfulRequest}\tSuccessful rate:{(double) successfulRequest / (double) dataTable.Rows.Count:P}\tTotal time:{finish-start}");
+                $"Total Rows:{dataTable.Rows.Count}\tSuccessful Request:{successfulRequest}\tSuccessful rate:{(double) successfulRequest / (double) dataTable.Rows.Count:P}\tTotal time:{finish - start}");
         }
 
         public static bool SaveValidCodePng(byte[] bytes)
@@ -86,7 +85,7 @@ namespace TicketInfoSpider
             Console.WriteLine($"{DateTime.UtcNow}: {s}");
         }
 
-        public static async void PdfDownLoader(string url, string fileName)
+        public static async void PdfDownLoadAsync(string url, string fileName)
         {
             try
             {
@@ -98,6 +97,26 @@ namespace TicketInfoSpider
             catch (Exception)
             {
                 Logger("DownLoad Failed.");
+            }
+        }
+
+        public static async Task<TicketDataCollection> TicketDataRequestAsync(string ticketId, string validCode,
+            string price)
+        {
+            try
+            {
+                var responseMessage = await MainClient.SendAsync(new TicketDataRequestMessage(ticketId, validCode,
+                    price));
+                var jsonData = await responseMessage.Content.ReadAsStringAsync();
+                var ticketDataCollection =
+                    JsonConvert.DeserializeObject<TicketDataCollection>(jsonData);
+                return ticketDataCollection;
+
+            }
+            catch (Exception)
+            {
+                Logger("Request Failed");
+                return null;
             }
         }
     }
