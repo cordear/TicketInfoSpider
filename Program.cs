@@ -18,7 +18,6 @@ namespace TicketInfoSpider
 
         private static void Main()
         {
-            var start = DateTime.UtcNow; // Start time
             Logger("Trying to open csv file...");
             var dataTable = CsvLoader.Csv2DataTable("test.csv");
             Logger("csv has been loaded into memory.");
@@ -36,6 +35,7 @@ namespace TicketInfoSpider
                 Logger("Valid code has been save as ValidCode.png");
             Logger("Open ValidCode.png and enter the valid code below");
             var validCode = GetValidCode();
+            var start = DateTime.UtcNow; // Start time
             foreach (DataRow row in dataTable.Rows)
             {
                 completeNumber++;
@@ -91,7 +91,7 @@ namespace TicketInfoSpider
             {
                 var data = await MainClient.GetByteArrayAsync(url);
                 var fileStream = new FileStream($".\\pdf\\{fileName}.pdf", FileMode.Create);
-                await fileStream.WriteAsync(data);
+                fileStream.Write(data);
                 fileStream.Close();
             }
             catch (Exception)
@@ -107,7 +107,7 @@ namespace TicketInfoSpider
             {
                 var responseMessage = await MainClient.SendAsync(new TicketDataRequestMessage(ticketId, validCode,
                     price));
-                var jsonData = await responseMessage.Content.ReadAsStringAsync();
+                var jsonData = responseMessage.Content.ReadAsStringAsync().Result;
                 var ticketDataCollection =
                     JsonConvert.DeserializeObject<TicketDataCollection>(jsonData);
                 return ticketDataCollection;
