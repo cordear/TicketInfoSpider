@@ -25,6 +25,7 @@ namespace TicketInfoSpider
             var completeNumber = 0;
             Console.WriteLine($"Rows:{successfulRequest}");
             Logger("Trying to get valid code, please wait...");
+
             MainClient.DefaultRequestHeaders.Add("User-Agent",
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.116 Safari/537.36");
             MainClient.DefaultRequestHeaders.Add("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8,ja;q=0.7");
@@ -34,8 +35,10 @@ namespace TicketInfoSpider
             if (SaveValidCodePng(validCodeResponse.Content.ReadAsByteArrayAsync().Result))
                 Logger("Valid code has been save as ValidCode.png");
             Logger("Open ValidCode.png and enter the valid code below");
+
             var validCode = GetValidCode();
             var start = DateTime.UtcNow; // Start time
+
             foreach (DataRow row in dataTable.Rows)
             {
                 completeNumber++;
