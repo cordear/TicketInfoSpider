@@ -13,7 +13,7 @@ namespace TicketInfoSpider
     {
         private static readonly CookieContainer CookieContainer = new CookieContainer();
 
-        private static readonly HttpClient MainClient = new HttpClient(new SocketsHttpHandler
+        private static readonly InvoiceGetterHttpClient MainClient = new InvoiceGetterHttpClient(new SocketsHttpHandler
             {UseCookies = true, CookieContainer = CookieContainer});
 
         private static void Main()
@@ -26,12 +26,7 @@ namespace TicketInfoSpider
             Console.WriteLine($"Rows:{successfulRequest}");
             Logger("Trying to get valid code, please wait...");
 
-            MainClient.DefaultRequestHeaders.Add("User-Agent",
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.116 Safari/537.36");
-            MainClient.DefaultRequestHeaders.Add("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8,ja;q=0.7");
-            MainClient.DefaultRequestHeaders.Add("Accept-Encoding", "gzip, deflate");
-
-            var validCodeResponse = MainClient.GetAsync(TicketInfoApi.ValidateCode).Result;
+            var validCodeResponse = MainClient.GetAsync(InvoiceInfoApi.ValidateCode).Result;
             if (SaveValidCodePng(validCodeResponse.Content.ReadAsByteArrayAsync().Result))
                 Logger("Valid code has been save as ValidCode.png");
             Logger("Open ValidCode.png and enter the valid code below");
@@ -46,17 +41,17 @@ namespace TicketInfoSpider
                     TicketDataRequestAsync(row[0].ToString(), validCode, row[1].ToString()).Result;
                 if (ticketDataCollection == null || ticketDataCollection.rtnCode == "-1")
                 {
-                    Logger($"FAILED : TicketId={row[0]} [{completeNumber}/{dataTable.Rows.Count}]");
+                    Logger($"FAILED : InvoiceId={row[0]} [{completeNumber}/{dataTable.Rows.Count}]");
                     successfulRequest -= 1;
                     continue;
                 }
 
                 foreach (var ticket in ticketDataCollection.rtnData)
                     PdfDownLoadAsync(ticket.pdfurl, $"{ticket.fpdm}_{ticket.fphm}");
-                Logger($"SUCCESS: TicketId={row[0]} [{completeNumber}/{dataTable.Rows.Count}]");
+                Logger($"SUCCESS: InvoiceId={row[0]} [{completeNumber}/{dataTable.Rows.Count}]");
             }
 
-            var finish = DateTime.UtcNow;
+            var finish = DateTime.UtcNow; // Finish time
             Logger("Task finished");
             Console.WriteLine(
                 $"Total Rows:{dataTable.Rows.Count}\tSuccessful Request:{successfulRequest}\tSuccessful rate:{(double) successfulRequest / (double) dataTable.Rows.Count:P}\tTotal time:{finish - start}");
@@ -94,7 +89,10 @@ namespace TicketInfoSpider
             {
                 var data = await MainClient.GetByteArrayAsync(url);
                 var fileStream = new FileStream($".\\pdf\\{fileName}.pdf", FileMode.Create);
-                fileStream.Write(data);
+                var bufferedStream = new BufferedStream(fileStream);
+                bufferedStream.Write(data);
+                bufferedStream.Flush();
+                bufferedStream.Close();
                 fileStream.Close();
             }
             catch (Exception)
@@ -108,13 +106,12 @@ namespace TicketInfoSpider
         {
             try
             {
-                var responseMessage = await MainClient.SendAsync(new TicketDataRequestMessage(ticketId, validCode,
+                var responseMessage = await MainClient.SendAsync(new InvoiceDataRequestMessage(ticketId, validCode,
                     price));
                 var jsonData = responseMessage.Content.ReadAsStringAsync().Result;
                 var ticketDataCollection =
                     JsonConvert.DeserializeObject<TicketDataCollection>(jsonData);
                 return ticketDataCollection;
-
             }
             catch (Exception)
             {
