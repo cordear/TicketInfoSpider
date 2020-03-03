@@ -1,6 +1,9 @@
 ﻿using System;
+using System.IO;
 using System.Net.Http;
 using System.Text;
+using System.Threading.Tasks;
+using Newtonsoft.Json;
 
 namespace TicketInfoSpider
 {
@@ -30,6 +33,22 @@ namespace TicketInfoSpider
         }
     }
 
+    public delegate void PdfDownloadFailedEventHandler(PdfDownloadFailedEventArgs e);
+
+    public class PdfDownloadFailedEventArgs : EventArgs
+    {
+        public string Massage { set; get; }
+        public Uri Url { set; get; }
+    }
+
+    public delegate void InvoiceInvoiceDataRequestFailedEventHandler(InvoiceInvoiceDataRequestFailedEventArgs e);
+
+    public class InvoiceInvoiceDataRequestFailedEventArgs : EventArgs
+    {
+        public string TicketId { set; get; }
+        public string Massage { set; get; }
+    }
+
     public class InvoiceGetterHttpClient : HttpClient
     {
         public InvoiceGetterHttpClient(SocketsHttpHandler socketsHttpHandler) : base(socketsHttpHandler)
@@ -38,6 +57,56 @@ namespace TicketInfoSpider
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.116 Safari/537.36");
             DefaultRequestHeaders.Add("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8,ja;q=0.7");
             DefaultRequestHeaders.Add("Accept-Encoding", "gzip, deflate");
+        }
+
+        public event PdfDownloadFailedEventHandler PdfDownloadFailed;
+        public event InvoiceInvoiceDataRequestFailedEventHandler InvoiceInvoiceDataRequestFailed;
+
+        public async void PdfDownloadAsync(string url, string fileName)
+        {
+            try
+            {
+                var data = await GetByteArrayAsync(url);
+                var fileStream = new FileStream($".\\pdf\\{fileName}.pdf", FileMode.Create);
+                var bufferedStream = new BufferedStream(fileStream);
+                bufferedStream.Write(data);
+                bufferedStream.Flush();
+                bufferedStream.Close();
+                fileStream.Close();
+            }
+            catch (Exception)
+            {
+                if (PdfDownloadFailed != null)
+                {
+                    var e = new PdfDownloadFailedEventArgs {Url = new Uri(url), Massage = "Download failed"};
+                    PdfDownloadFailed.Invoke(e);
+                }
+            }
+        }
+
+        public async Task<TicketDataCollection> InvoiceDataRequestAsync(string ticketId, string validCode,
+            string price)
+        {
+            try
+            {
+                var responseMessage = await SendAsync(new InvoiceDataRequestMessage(ticketId, validCode,
+                    price));
+                var jsonData = responseMessage.Content.ReadAsStringAsync().Result;
+                var ticketDataCollection =
+                    JsonConvert.DeserializeObject<TicketDataCollection>(jsonData);
+                return ticketDataCollection;
+            }
+            catch (Exception)
+            {
+                if (InvoiceInvoiceDataRequestFailed != null)
+                {
+                    var e = new InvoiceInvoiceDataRequestFailedEventArgs
+                        {TicketId = ticketId, Massage = "Request Failed"};
+                    this.InvoiceInvoiceDataRequestFailed.Invoke(e);
+                }
+
+                return null;
+            }
         }
     }
 }

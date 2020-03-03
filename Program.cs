@@ -4,8 +4,6 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
-using System.Threading.Tasks;
-using Newtonsoft.Json;
 
 namespace TicketInfoSpider
 {
@@ -27,9 +25,9 @@ namespace TicketInfoSpider
             Logger("Trying to get valid code, please wait...");
 
             var validCodeResponse = MainClient.GetAsync(InvoiceInfoApi.ValidateCode).Result;
-            if (SaveValidCodePng(validCodeResponse.Content.ReadAsByteArrayAsync().Result))
-                Logger("Valid code has been save as ValidCode.png");
-            Logger("Open ValidCode.png and enter the valid code below");
+            Logger(SaveValidCodePng(validCodeResponse.Content.ReadAsByteArrayAsync().Result)
+                ? "Valid code has been save as ValidCode.png. Open ValidCode.png and enter the valid code below."
+                : "Can't get the valid code!");
 
             var validCode = GetValidCode();
             var start = DateTime.UtcNow; // Start time
@@ -38,7 +36,7 @@ namespace TicketInfoSpider
             {
                 completeNumber++;
                 var ticketDataCollection =
-                    TicketDataRequestAsync(row[0].ToString(), validCode, row[1].ToString()).Result;
+                    MainClient.InvoiceDataRequestAsync(row[0].ToString(), validCode, row[1].ToString()).Result;
                 if (ticketDataCollection == null || ticketDataCollection.rtnCode == "-1")
                 {
                     Logger($"FAILED : InvoiceId={row[0]} [{completeNumber}/{dataTable.Rows.Count}]");
@@ -47,7 +45,7 @@ namespace TicketInfoSpider
                 }
 
                 foreach (var ticket in ticketDataCollection.rtnData)
-                    PdfDownLoadAsync(ticket.pdfurl, $"{ticket.fpdm}_{ticket.fphm}");
+                    MainClient.PdfDownloadAsync(ticket.pdfurl, $"{ticket.fpdm}_{ticket.fphm}");
                 Logger($"SUCCESS: InvoiceId={row[0]} [{completeNumber}/{dataTable.Rows.Count}]");
             }
 
@@ -81,43 +79,6 @@ namespace TicketInfoSpider
         public static void Logger(string s)
         {
             Console.WriteLine($"{DateTime.UtcNow}: {s}");
-        }
-
-        public static async void PdfDownLoadAsync(string url, string fileName)
-        {
-            try
-            {
-                var data = await MainClient.GetByteArrayAsync(url);
-                var fileStream = new FileStream($".\\pdf\\{fileName}.pdf", FileMode.Create);
-                var bufferedStream = new BufferedStream(fileStream);
-                bufferedStream.Write(data);
-                bufferedStream.Flush();
-                bufferedStream.Close();
-                fileStream.Close();
-            }
-            catch (Exception)
-            {
-                Logger("DownLoad Failed.");
-            }
-        }
-
-        public static async Task<TicketDataCollection> TicketDataRequestAsync(string ticketId, string validCode,
-            string price)
-        {
-            try
-            {
-                var responseMessage = await MainClient.SendAsync(new InvoiceDataRequestMessage(ticketId, validCode,
-                    price));
-                var jsonData = responseMessage.Content.ReadAsStringAsync().Result;
-                var ticketDataCollection =
-                    JsonConvert.DeserializeObject<TicketDataCollection>(jsonData);
-                return ticketDataCollection;
-            }
-            catch (Exception)
-            {
-                Logger("Request Failed");
-                return null;
-            }
         }
     }
 }
