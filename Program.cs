@@ -16,6 +16,10 @@ namespace TicketInfoSpider
 
         private static void Main()
         {
+            MainClient.OnPdfDownLoadSuccess += MassageHandler.Logger;
+            MainClient.OnInvoiceInvoiceDataRequestFailed += MassageHandler.Logger;
+            MainClient.OnPdfDownloadFailed += MassageHandler.Logger;
+
             Logger("Trying to open csv file...");
             var dataTable = CsvLoader.Csv2DataTable("test.csv");
             Logger("csv has been loaded into memory.");
@@ -35,18 +39,19 @@ namespace TicketInfoSpider
             foreach (DataRow row in dataTable.Rows)
             {
                 completeNumber++;
+                var currentStatus = $"[{completeNumber}/{dataTable.Rows.Count}]";
                 var ticketDataCollection =
                     MainClient.InvoiceDataRequestAsync(row[0].ToString(), validCode, row[1].ToString()).Result;
                 if (ticketDataCollection == null || ticketDataCollection.rtnCode == "-1")
                 {
-                    Logger($"FAILED : InvoiceId={row[0]} [{completeNumber}/{dataTable.Rows.Count}]");
                     successfulRequest -= 1;
                     continue;
                 }
 
                 foreach (var ticket in ticketDataCollection.rtnData)
-                    MainClient.PdfDownloadAsync(ticket.pdfurl, $"{ticket.fpdm}_{ticket.fphm}");
-                Logger($"SUCCESS: InvoiceId={row[0]} [{completeNumber}/{dataTable.Rows.Count}]");
+                    MainClient.PdfDownloadAsync(ticket.pdfurl, $"{ticket.fpdm}_{ticket.fphm}", row[0].ToString());
+
+                Console.WriteLine($"\t\t\t{currentStatus}");
             }
 
             var finish = DateTime.UtcNow; // Finish time

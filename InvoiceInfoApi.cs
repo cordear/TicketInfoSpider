@@ -38,16 +38,24 @@ namespace TicketInfoSpider
     public class PdfDownloadFailedEventArgs : EventArgs
     {
         public string Massage { set; get; }
-        public Uri Url { set; get; }
+        public string Url { set; get; }
+        public string TicketId { set; get; }
     }
 
-    public delegate void InvoiceInvoiceDataRequestFailedEventHandler(InvoiceInvoiceDataRequestFailedEventArgs e);
+    public delegate void InvoiceDataRequestFailedEventHandler(InvoiceInvoiceDataRequestFailedEventArgs e);
 
     public class InvoiceInvoiceDataRequestFailedEventArgs : EventArgs
     {
         public string TicketId { set; get; }
         public string Massage { set; get; }
     }
+
+    public class PdfDownloadSuccessEventArgs : EventArgs
+    {
+        public string TicketId { set; get; }
+    }
+
+    public delegate void PdfDownloadSuccessEventHandler(PdfDownloadSuccessEventArgs e);
 
     public class InvoiceGetterHttpClient : HttpClient
     {
@@ -59,10 +67,11 @@ namespace TicketInfoSpider
             DefaultRequestHeaders.Add("Accept-Encoding", "gzip, deflate");
         }
 
-        public event PdfDownloadFailedEventHandler PdfDownloadFailed;
-        public event InvoiceInvoiceDataRequestFailedEventHandler InvoiceInvoiceDataRequestFailed;
+        public event PdfDownloadFailedEventHandler OnPdfDownloadFailed;
+        public event InvoiceDataRequestFailedEventHandler OnInvoiceInvoiceDataRequestFailed;
+        public event PdfDownloadSuccessEventHandler OnPdfDownLoadSuccess;
 
-        public async void PdfDownloadAsync(string url, string fileName)
+        public async void PdfDownloadAsync(string url, string fileName, string ticketId)
         {
             try
             {
@@ -73,14 +82,12 @@ namespace TicketInfoSpider
                 bufferedStream.Flush();
                 bufferedStream.Close();
                 fileStream.Close();
+                OnPdfDownLoadSuccess?.Invoke(new PdfDownloadSuccessEventArgs {TicketId = ticketId});
             }
             catch (Exception)
             {
-                if (PdfDownloadFailed != null)
-                {
-                    var e = new PdfDownloadFailedEventArgs {Url = new Uri(url), Massage = "Download failed"};
-                    PdfDownloadFailed.Invoke(e);
-                }
+                OnPdfDownloadFailed?.Invoke(new PdfDownloadFailedEventArgs
+                    {Url = url, Massage = "Download failed", TicketId = ticketId});
             }
         }
 
@@ -94,19 +101,36 @@ namespace TicketInfoSpider
                 var jsonData = responseMessage.Content.ReadAsStringAsync().Result;
                 var ticketDataCollection =
                     JsonConvert.DeserializeObject<TicketDataCollection>(jsonData);
+                if (ticketDataCollection.rtnCode == "-1")
+                    OnInvoiceInvoiceDataRequestFailed?.Invoke(new InvoiceInvoiceDataRequestFailedEventArgs
+                        {TicketId = ticketId, Massage = "Invoice doesn't exist."});
+
                 return ticketDataCollection;
             }
             catch (Exception)
             {
-                if (InvoiceInvoiceDataRequestFailed != null)
-                {
-                    var e = new InvoiceInvoiceDataRequestFailedEventArgs
-                        {TicketId = ticketId, Massage = "Request Failed"};
-                    this.InvoiceInvoiceDataRequestFailed.Invoke(e);
-                }
-
+                OnInvoiceInvoiceDataRequestFailed?.Invoke(new InvoiceInvoiceDataRequestFailedEventArgs
+                    {TicketId = ticketId, Massage = "Request Failed"});
                 return null;
             }
+        }
+    }
+
+    internal class MassageHandler
+    {
+        public static void Logger(InvoiceInvoiceDataRequestFailedEventArgs e)
+        {
+            Console.WriteLine($"{DateTime.UtcNow}: FAILED : InvoiceId={e.TicketId} {e.Massage}");
+        }
+
+        public static void Logger(PdfDownloadFailedEventArgs e)
+        {
+            Console.WriteLine($"{DateTime.UtcNow}: FAILED : InvoiceId={e.TicketId} Uri={e.Url} {e.Massage}");
+        }
+
+        public static void Logger(PdfDownloadSuccessEventArgs e)
+        {
+            Console.WriteLine($"{DateTime.UtcNow}: SUCCESS: InvoiceId={e.TicketId}");
         }
     }
 }
