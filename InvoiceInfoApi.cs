@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Linq;
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
@@ -65,6 +66,9 @@ namespace TicketInfoSpider
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.116 Safari/537.36");
             DefaultRequestHeaders.Add("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8,ja;q=0.7");
             DefaultRequestHeaders.Add("Accept-Encoding", "gzip, deflate");
+            OnPdfDownLoadSuccess += MassageHandler.Logger;
+            OnInvoiceInvoiceDataRequestFailed += MassageHandler.Logger;
+            OnPdfDownloadFailed += MassageHandler.Logger;
         }
 
         public event PdfDownloadFailedEventHandler OnPdfDownloadFailed;
@@ -131,6 +135,35 @@ namespace TicketInfoSpider
         public static void Logger(PdfDownloadSuccessEventArgs e)
         {
             Console.WriteLine($"{DateTime.UtcNow}: SUCCESS: InvoiceId={e.TicketId}");
+        }
+
+        public static void Logger(string s)
+        {
+            Console.WriteLine($"{DateTime.UtcNow}: {s}");
+        }
+    }
+
+    internal class ValidCodeGetter
+    {
+        public static bool SaveValidCodePng(byte[] bytes)
+        {
+            if (bytes.Length == 0) return false;
+            var fileStream = new FileStream("VaildCode.png", FileMode.Create);
+            fileStream.Write(bytes);
+            fileStream.Close();
+            return true;
+        }
+
+        public static string GetValidCode()
+        {
+            var validCode = Console.ReadLine();
+            while (validCode == null || validCode.Length != 5 || !validCode.All(char.IsLetterOrDigit))
+            {
+                MassageHandler.Logger("You entered an illegal valid code, try again");
+                validCode = Console.ReadLine();
+            }
+
+            return validCode;
         }
     }
 }

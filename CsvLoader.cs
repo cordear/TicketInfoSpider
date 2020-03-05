@@ -14,19 +14,18 @@ namespace TicketInfoSpider
             //记录每次读取的一行记录
             var strLine = "";
             //记录每行记录中的各字段内容
-            string[] aryLine;
             //标示列数
             var columnCount = 0;
             //标示是否是读取的第一行
-            var IsFirst = true;
+            var isFirst = true;
 
             //逐行读取CSV中的数据
             while ((strLine = sr.ReadLine()) != null)
             {
-                aryLine = strLine.Split(',');
-                if (IsFirst)
+                var aryLine = strLine.Split(',');
+                if (isFirst)
                 {
-                    IsFirst = false;
+                    isFirst = false;
                     columnCount = aryLine.Length;
                     //创建列
                     for (var i = 0; i < columnCount; i++)
