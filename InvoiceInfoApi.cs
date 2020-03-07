@@ -43,9 +43,9 @@ namespace TicketInfoSpider
         public string TicketId { set; get; }
     }
 
-    public delegate void InvoiceDataRequestFailedEventHandler(InvoiceInvoiceDataRequestFailedEventArgs e);
+    public delegate void InvoiceDataRequestFailedEventHandler(InvoiceDataRequestFailedEventArgs e);
 
-    public class InvoiceInvoiceDataRequestFailedEventArgs : EventArgs
+    public class InvoiceDataRequestFailedEventArgs : EventArgs
     {
         public string TicketId { set; get; }
         public string Massage { set; get; }
@@ -106,14 +106,14 @@ namespace TicketInfoSpider
                 var ticketDataCollection =
                     JsonConvert.DeserializeObject<TicketDataCollection>(jsonData);
                 if (ticketDataCollection.rtnCode == "-1")
-                    OnInvoiceInvoiceDataRequestFailed?.Invoke(new InvoiceInvoiceDataRequestFailedEventArgs
+                    OnInvoiceInvoiceDataRequestFailed?.Invoke(new InvoiceDataRequestFailedEventArgs
                         {TicketId = ticketId, Massage = "Invoice doesn't exist."});
 
                 return ticketDataCollection;
             }
             catch (Exception)
             {
-                OnInvoiceInvoiceDataRequestFailed?.Invoke(new InvoiceInvoiceDataRequestFailedEventArgs
+                OnInvoiceInvoiceDataRequestFailed?.Invoke(new InvoiceDataRequestFailedEventArgs
                     {TicketId = ticketId, Massage = "Request Failed"});
                 return null;
             }
@@ -122,7 +122,7 @@ namespace TicketInfoSpider
 
     internal class MassageHandler
     {
-        public static void Logger(InvoiceInvoiceDataRequestFailedEventArgs e)
+        public static void Logger(InvoiceDataRequestFailedEventArgs e)
         {
             Console.WriteLine($"{DateTime.UtcNow}: FAILED : InvoiceId={e.TicketId} {e.Massage}");
         }
