@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Data;
+using System.IO;
 using System.Net;
 using System.Net.Http;
 
@@ -30,7 +32,7 @@ namespace TicketInfoSpider
 
             var validCode = ValidCodeGetter.GetValidCode();
             var start = DateTime.UtcNow; // Start time
-
+            var invoiceTypeCollection =new List<string>();
             foreach (DataRow row in dataTable.Rows)
             {
                 completeNumber++;
@@ -43,10 +45,16 @@ namespace TicketInfoSpider
                     continue;
                 }
 
+                if (!invoiceTypeCollection.Contains(ticketDataCollection.rtnData[0].bz[4..10]))
+                {
+                    MassageHandler.Logger($"Folder {ticketDataCollection.rtnData[0].bz[4..10]} not exist, create now.");
+                    Directory.CreateDirectory(@$".\pdf\{ticketDataCollection.rtnData[0].bz[4..10]}");
+                    invoiceTypeCollection.Add(ticketDataCollection.rtnData[0].bz[4..10]);
+                }
                 foreach (var ticket in ticketDataCollection.rtnData)
-                    MainClient.PdfDownloadAsync(ticket.pdfurl, $"{ticket.fpdm}_{ticket.fphm}", row[0].ToString());
+                    MainClient.PdfDownloadAsync(ticket.pdfurl, $"{ticket.fpdm}_{ticket.fphm}", row[0].ToString(),ticket.bz[4..10]);
 
-                Console.WriteLine($"\t\t\t{currentStatus}");
+                Console.WriteLine($"{currentStatus}");
             }
 
             var finish = DateTime.UtcNow; // Finish time
@@ -54,5 +62,6 @@ namespace TicketInfoSpider
             Console.WriteLine(
                 $"Total Rows:{dataTable.Rows.Count}\tSuccessful Request:{successfulRequest}\tSuccessful rate:{(double) successfulRequest / (double) dataTable.Rows.Count:P}\tTotal time:{finish - start}");
         }
+
     }
 }

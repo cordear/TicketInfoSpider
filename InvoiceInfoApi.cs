@@ -75,12 +75,12 @@ namespace TicketInfoSpider
         public event InvoiceDataRequestFailedEventHandler OnInvoiceInvoiceDataRequestFailed;
         public event PdfDownloadSuccessEventHandler OnPdfDownLoadSuccess;
 
-        public async void PdfDownloadAsync(string url, string fileName, string ticketId)
+        public async void PdfDownloadAsync(string url, string fileName, string ticketId,string invoiceType)
         {
             try
             {
                 var data = await GetByteArrayAsync(url);
-                var fileStream = new FileStream($".\\pdf\\{fileName}.pdf", FileMode.Create);
+                var fileStream = new FileStream(@$".\pdf\{invoiceType}\{fileName}.pdf", FileMode.Create);
                 var bufferedStream = new BufferedStream(fileStream);
                 bufferedStream.Write(data);
                 bufferedStream.Flush();
