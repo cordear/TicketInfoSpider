@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
@@ -41,6 +42,8 @@ namespace TicketInfoSpider
         public string Massage { set; get; }
         public string Url { set; get; }
         public string TicketId { set; get; }
+        public string FileName { set; get; }
+        public string InvoiceType { set; get; }
     }
 
     public delegate void InvoiceDataRequestFailedEventHandler(InvoiceDataRequestFailedEventArgs e);
@@ -60,6 +63,8 @@ namespace TicketInfoSpider
 
     public class InvoiceGetterHttpClient : HttpClient
     {
+        private readonly List<PdfDownloadFailedEventArgs> _reTryList = new List<PdfDownloadFailedEventArgs>();
+
         public InvoiceGetterHttpClient(SocketsHttpHandler socketsHttpHandler) : base(socketsHttpHandler)
         {
             DefaultRequestHeaders.Add("User-Agent",
@@ -69,13 +74,24 @@ namespace TicketInfoSpider
             OnPdfDownLoadSuccess += MassageHandler.Logger;
             OnInvoiceInvoiceDataRequestFailed += MassageHandler.Logger;
             OnPdfDownloadFailed += MassageHandler.Logger;
+            OnPdfDownloadFailed += e => { _reTryList.Add(e); };
+        }
+
+        public void ReDownload()
+        {
+            MassageHandler.Logger(_reTryList.Count == 0
+                ? "There are no invoice need to re-download."
+                : $"there are {_reTryList.Count} invoice(s) need to re-download.");
+            if (_reTryList.Count == 0) return;
+            foreach (var e in _reTryList) PdfDownloadAsync(e.Url, e.FileName, e.TicketId, e.InvoiceType, true);
         }
 
         public event PdfDownloadFailedEventHandler OnPdfDownloadFailed;
         public event InvoiceDataRequestFailedEventHandler OnInvoiceInvoiceDataRequestFailed;
         public event PdfDownloadSuccessEventHandler OnPdfDownLoadSuccess;
 
-        public async void PdfDownloadAsync(string url, string fileName, string ticketId,string invoiceType)
+        public async void PdfDownloadAsync(string url, string fileName, string ticketId, string invoiceType,
+            bool isReDownload = false)
         {
             try
             {
@@ -90,8 +106,13 @@ namespace TicketInfoSpider
             }
             catch (Exception)
             {
-                OnPdfDownloadFailed?.Invoke(new PdfDownloadFailedEventArgs
-                    {Url = url, Massage = "Download failed", TicketId = ticketId});
+                var e = new PdfDownloadFailedEventArgs
+                {
+                    Url = url, Massage = "Download failed", TicketId = ticketId, FileName = fileName,
+                    InvoiceType = invoiceType
+                };
+                if (isReDownload) MassageHandler.Logger(e);
+                else OnPdfDownloadFailed?.Invoke(e);
             }
         }
 
@@ -120,7 +141,7 @@ namespace TicketInfoSpider
         }
     }
 
-    internal class MassageHandler
+    internal static class MassageHandler
     {
         public static void Logger(InvoiceDataRequestFailedEventArgs e)
         {
@@ -143,7 +164,7 @@ namespace TicketInfoSpider
         }
     }
 
-    internal class ValidCodeGetter
+    internal static class ValidCodeGetter
     {
         public static bool SaveValidCodePng(byte[] bytes)
         {

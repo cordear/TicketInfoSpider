@@ -54,12 +54,13 @@ namespace TicketInfoSpider
                 foreach (var ticket in ticketDataCollection.rtnData)
                     MainClient.PdfDownloadAsync(ticket.pdfurl, $"{ticket.fpdm}_{ticket.fphm}", row[0].ToString(),ticket.bz[4..10]);
 
-                Console.WriteLine($"{currentStatus}");
+                MassageHandler.Logger($"{currentStatus}");
             }
-
+            MassageHandler.Logger("Now ReDownloading.");
+            MainClient.ReDownload();
             var finish = DateTime.UtcNow; // Finish time
             MassageHandler.Logger("Task finished");
-            Console.WriteLine(
+            MassageHandler.Logger(
                 $"Total Rows:{dataTable.Rows.Count}\tSuccessful Request:{successfulRequest}\tSuccessful rate:{(double) successfulRequest / (double) dataTable.Rows.Count:P}\tTotal time:{finish - start}");
         }
 
