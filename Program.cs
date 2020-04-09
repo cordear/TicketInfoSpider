@@ -31,8 +31,20 @@ namespace TicketInfoSpider
                     : "Can't get the valid code!");
 
             var validCode = ValidCodeGetter.GetValidCode();
+            while (!ValidCodeGetter.IsValidCodeCorrect(dataTable.Rows[0][0].ToString(), validCode,
+                dataTable.Rows[0][1].ToString(), MainClient))
+            {
+                MassageHandler.Logger("It seems you entered a wrong valid code, now try again.");
+                validCodeResponse = MainClient.GetAsync(InvoiceInfoApi.ValidateCode).Result;
+                MassageHandler.Logger(
+                    ValidCodeGetter.SaveValidCodePng(validCodeResponse.Content.ReadAsByteArrayAsync().Result)
+                        ? "Valid code has been save as ValidCode.png. Open ValidCode.png and enter the valid code below."
+                        : "Can't get the valid code!");
+                validCode = ValidCodeGetter.GetValidCode();
+            }
+
             var start = DateTime.UtcNow; // Start time
-            var invoiceTypeCollection =new List<string>();
+            var invoiceTypeCollection = new List<string>();
             foreach (DataRow row in dataTable.Rows)
             {
                 completeNumber++;
@@ -51,11 +63,14 @@ namespace TicketInfoSpider
                     Directory.CreateDirectory(@$".\pdf\{ticketDataCollection.rtnData[0].bz[4..10]}");
                     invoiceTypeCollection.Add(ticketDataCollection.rtnData[0].bz[4..10]);
                 }
+
                 foreach (var ticket in ticketDataCollection.rtnData)
-                    MainClient.PdfDownloadAsync(ticket.pdfurl, $"{ticket.fpdm}_{ticket.fphm}", row[0].ToString(),ticket.bz[4..10]);
+                    MainClient.PdfDownloadAsync(ticket.pdfurl, $"{ticket.fpdm}_{ticket.fphm}", row[0].ToString(),
+                        ticket.bz[4..10]);
 
                 MassageHandler.Logger($"{currentStatus}");
             }
+
             MassageHandler.Logger("Now ReDownloading.");
             MainClient.ReDownload();
             var finish = DateTime.UtcNow; // Finish time
@@ -63,6 +78,5 @@ namespace TicketInfoSpider
             MassageHandler.Logger(
                 $"Total Rows:{dataTable.Rows.Count}\tSuccessful Request:{successfulRequest}\tSuccessful rate:{(double) successfulRequest / (double) dataTable.Rows.Count:P}\tTotal time:{finish - start}");
         }
-
     }
 }

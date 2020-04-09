@@ -186,5 +186,13 @@ namespace TicketInfoSpider
 
             return validCode;
         }
+
+        public static bool IsValidCodeCorrect(string ticketId, string validCode, string price,
+            InvoiceGetterHttpClient client)
+        {
+            var testCase = client.InvoiceDataRequestAsync(ticketId, validCode, price).Result;
+            if (testCase.rtnMsg == "发票查验失败，图形验证码不正确！") return false;
+            return true;
+        }
     }
 }
