@@ -24,18 +24,12 @@ namespace TicketInfoSpider
             Console.WriteLine($"Rows:{successfulRequest}");
             MassageHandler.Logger("Trying to get valid code, please wait...");
 
-            var validCodeResponse = MainClient.GetAsync(InvoiceInfoApi.ValidateCode).Result;
-            MassageHandler.Logger(
-                ValidCodeGetter.SaveValidCodePng(validCodeResponse.Content.ReadAsByteArrayAsync().Result)
-                    ? "Valid code has been save as ValidCode.png. Open ValidCode.png and enter the valid code below."
-                    : "Can't get the valid code!");
-
-            var validCode = ValidCodeGetter.GetValidCode();
-            while (!ValidCodeGetter.IsValidCodeCorrect(dataTable.Rows[0][0].ToString(), validCode,
+            var validCode = "";
+            while (validCode == "" || !ValidCodeGetter.IsValidCodeCorrect(dataTable.Rows[0][0].ToString(), validCode,
                 dataTable.Rows[0][1].ToString(), MainClient))
             {
-                MassageHandler.Logger("It seems you entered a wrong valid code, now try again.");
-                validCodeResponse = MainClient.GetAsync(InvoiceInfoApi.ValidateCode).Result;
+                if (validCode != "") MassageHandler.Logger("It seems you entered a wrong valid code, now try again.");
+                var validCodeResponse = MainClient.GetAsync(InvoiceInfoApi.ValidateCode).Result;
                 MassageHandler.Logger(
                     ValidCodeGetter.SaveValidCodePng(validCodeResponse.Content.ReadAsByteArrayAsync().Result)
                         ? "Valid code has been save as ValidCode.png. Open ValidCode.png and enter the valid code below."
