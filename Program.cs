@@ -58,9 +58,9 @@ namespace TicketInfoSpider
                     invoiceTypeCollection.Add(ticketDataCollection.rtnData[0].bz[4..10]);
                 }
 
-                foreach (var ticket in ticketDataCollection.rtnData)
-                    MainClient.PdfDownloadAsync(ticket.pdfurl, $"{ticket.fpdm}_{ticket.fphm}", row[0].ToString(),
-                        ticket.bz[4..10]);
+                var ticket = ticketDataCollection.rtnData[0];
+                MainClient.PdfDownloadAsync(ticket.pdfurl, $"{ticket.fpdm}_{ticket.fphm}", row[0].ToString(),
+                    ticket.bz[4..10]);
 
                 MassageHandler.Logger($"{currentStatus}");
             }
@@ -71,6 +71,8 @@ namespace TicketInfoSpider
             MassageHandler.Logger("Task finished");
             MassageHandler.Logger(
                 $"Total Rows:{dataTable.Rows.Count}\tSuccessful Request:{successfulRequest}\tSuccessful rate:{(double) successfulRequest / (double) dataTable.Rows.Count:P}\tTotal time:{finish - start}");
+            Console.WriteLine("Press any key to exit.");
+            Console.ReadLine();
         }
     }
 }
