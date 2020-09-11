@@ -139,6 +139,7 @@ namespace TicketInfoSpider
                 return null;
             }
         }
+
     }
 
     internal static class MassageHandler
@@ -169,7 +170,7 @@ namespace TicketInfoSpider
         public static bool SaveValidCodePng(byte[] bytes)
         {
             if (bytes.Length == 0) return false;
-            var fileStream = new FileStream("VaildCode.png", FileMode.Create);
+            var fileStream = new FileStream("ValidCode.png", FileMode.Create);
             fileStream.Write(bytes);
             fileStream.Close();
             return true;
