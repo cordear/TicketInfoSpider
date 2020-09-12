@@ -15,7 +15,7 @@ namespace TicketInfoSpider
         private static readonly InvoiceGetterHttpClient MainClient = new InvoiceGetterHttpClient(new SocketsHttpHandler
             {UseCookies = true, CookieContainer = CookieContainer});
 
-        private static void  Main()
+        private static void Main()
         {
             MassageHandler.Logger("Trying to open csv file...");
             var dataTable = CsvLoader.Csv2DataTable("test.csv");
@@ -33,11 +33,12 @@ namespace TicketInfoSpider
                 var validCodeResponse = MainClient.GetAsync(InvoiceInfoApi.ValidateCode).Result;
                 MassageHandler.Logger(
                     ValidCodeGetter.SaveValidCodePng(validCodeResponse.Content.ReadAsByteArrayAsync().Result)
-                        ? "Valid code has been save as ValidCode.png. Open ValidCode.png and enter the valid code below."
+                        ? "Valid code has been save as ValidCode.png. Enter the valid code below."
                         : "Can't get the valid code!");
-                new Process() {StartInfo = new ProcessStartInfo("ValidCode.png") {UseShellExecute = true}}.Start();
+                new Process {StartInfo = new ProcessStartInfo("ValidCode.png") {UseShellExecute = true}}.Start();
                 validCode = ValidCodeGetter.GetValidCode();
             }
+
             var start = DateTime.UtcNow; // Start time
             var invoiceTypeCollection = new List<string>();
 
@@ -52,6 +53,7 @@ namespace TicketInfoSpider
                     successfulRequest -= 1;
                     continue;
                 }
+
                 var ticket = ticketDataCollection.rtnData[0];
                 if (!invoiceTypeCollection.Contains(ticket.bz[4..10]))
                 {
@@ -59,6 +61,7 @@ namespace TicketInfoSpider
                     Directory.CreateDirectory(@$".\pdf\{ticket.bz[4..10]}");
                     invoiceTypeCollection.Add(ticket.bz[4..10]);
                 }
+
                 MainClient.PdfDownloadAsync(ticket.pdfurl, $"{ticket.fpdm}_{ticket.fphm}", row[0].ToString(),
                     ticket.bz[4..10]);
 
