@@ -29,8 +29,8 @@ namespace TicketInfoSpider
             }
 
             MassageHandler.Logger("csv has been loaded into memory.");
-            var successfulRequest = records.Count + 1;
-            var totalCount = records.Count + 1;
+            var successfulRequest = records.Count;
+            var totalCount = records.Count;
             var completeNumber = 0;
             Console.WriteLine($"Rows:{successfulRequest}");
             MassageHandler.Logger("Trying to get valid code, please wait...");
@@ -82,7 +82,7 @@ namespace TicketInfoSpider
             var finish = DateTime.UtcNow; // Finish time
             MassageHandler.Logger("Task finished");
             MassageHandler.Logger(
-                $"Total Rows:{totalCount}\tSuccessful Request:{successfulRequest}\tSuccessful rate:{(double) successfulRequest / (double) dataTable.Rows.Count:P}\tTotal time:{finish - start}");
+                $"Total Rows:{totalCount}\tSuccessful Request:{successfulRequest}\tSuccessful rate:{(double) successfulRequest / (double) totalCount:P}\tTotal time:{finish - start}");
             Console.WriteLine("Press any key to exit.");
             Console.ReadLine();
         }
