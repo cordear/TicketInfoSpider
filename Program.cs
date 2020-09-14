@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Data;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using CsvHelper;
@@ -20,23 +20,24 @@ namespace TicketInfoSpider
         private static void Main()
         {
             MassageHandler.Logger("Trying to open csv file...");
+            List<InvoiceInfo> records;
             using (var reader = new StreamReader("test.csv"))
             using (var csv = new CsvReader(reader, CultureInfo.InvariantCulture))
             {
                 csv.Configuration.HasHeaderRecord = false;
-                var records = csv.GetRecords<InvoiceInfo>();
+                records = csv.GetRecords<InvoiceInfo>().ToList();
             }
 
-            var dataTable = CsvLoader.Csv2DataTable("test.csv");
             MassageHandler.Logger("csv has been loaded into memory.");
-            var successfulRequest = dataTable.Rows.Count;
+            var successfulRequest = records.Count + 1;
+            var totalCount = records.Count + 1;
             var completeNumber = 0;
             Console.WriteLine($"Rows:{successfulRequest}");
             MassageHandler.Logger("Trying to get valid code, please wait...");
 
             var validCode = "";
-            while (validCode == "" || !ValidCodeGetter.IsValidCodeCorrect(dataTable.Rows[0][0].ToString(), validCode,
-                dataTable.Rows[0][1].ToString(), MainClient))
+            while (validCode == "" || !ValidCodeGetter.IsValidCodeCorrect(records[0].id, validCode,
+                records[0].price, MainClient))
             {
                 if (validCode != "") MassageHandler.Logger("It seems you entered a wrong valid code, now try again.");
                 var validCodeResponse = MainClient.GetAsync(InvoiceInfoApi.ValidateCode).Result;
@@ -50,13 +51,12 @@ namespace TicketInfoSpider
 
             var start = DateTime.UtcNow; // Start time
             var invoiceTypeCollection = new List<string>();
-
-            foreach (DataRow row in dataTable.Rows)
+            foreach (var data in records)
             {
                 completeNumber++;
-                var currentStatus = $"[{completeNumber}/{dataTable.Rows.Count}]";
+                var currentStatus = $"[{completeNumber}/{totalCount}]";
                 var ticketDataCollection =
-                    MainClient.InvoiceDataRequestAsync(row[0].ToString(), validCode, row[1].ToString()).Result;
+                    MainClient.InvoiceDataRequestAsync(data.id, validCode, data.price).Result;
                 if (ticketDataCollection == null || ticketDataCollection.rtnCode == "-1")
                 {
                     successfulRequest -= 1;
@@ -71,7 +71,7 @@ namespace TicketInfoSpider
                     invoiceTypeCollection.Add(ticket.bz[4..10]);
                 }
 
-                MainClient.PdfDownloadAsync(ticket.pdfurl, $"{ticket.fpdm}_{ticket.fphm}", row[0].ToString(),
+                MainClient.PdfDownloadAsync(ticket.pdfurl, $"{ticket.fpdm}_{ticket.fphm}", data.id,
                     ticket.bz[4..10]);
 
                 MassageHandler.Logger($"{currentStatus}");
@@ -82,7 +82,7 @@ namespace TicketInfoSpider
             var finish = DateTime.UtcNow; // Finish time
             MassageHandler.Logger("Task finished");
             MassageHandler.Logger(
-                $"Total Rows:{dataTable.Rows.Count}\tSuccessful Request:{successfulRequest}\tSuccessful rate:{(double) successfulRequest / (double) dataTable.Rows.Count:P}\tTotal time:{finish - start}");
+                $"Total Rows:{totalCount}\tSuccessful Request:{successfulRequest}\tSuccessful rate:{(double) successfulRequest / (double) dataTable.Rows.Count:P}\tTotal time:{finish - start}");
             Console.WriteLine("Press any key to exit.");
             Console.ReadLine();
         }
