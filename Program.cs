@@ -2,9 +2,11 @@
 using System.Collections.Generic;
 using System.Data;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Net;
 using System.Net.Http;
+using CsvHelper;
 
 namespace TicketInfoSpider
 {
@@ -18,6 +20,13 @@ namespace TicketInfoSpider
         private static void Main()
         {
             MassageHandler.Logger("Trying to open csv file...");
+            using (var reader = new StreamReader("test.csv"))
+            using (var csv = new CsvReader(reader, CultureInfo.InvariantCulture))
+            {
+                csv.Configuration.HasHeaderRecord = false;
+                var records = csv.GetRecords<InvoiceInfo>();
+            }
+
             var dataTable = CsvLoader.Csv2DataTable("test.csv");
             MassageHandler.Logger("csv has been loaded into memory.");
             var successfulRequest = dataTable.Rows.Count;

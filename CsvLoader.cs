@@ -1,6 +1,7 @@
 ﻿using System.Data;
 using System.IO;
 using System.Text;
+using CsvHelper.Configuration.Attributes;
 
 namespace TicketInfoSpider
 {
@@ -46,5 +47,13 @@ namespace TicketInfoSpider
             fs.Close();
             return dt;
         }
+    }
+
+    class InvoiceInfo
+    {
+        [Index(0)]
+        public string Id { set; get; }
+        [Index(1)]
+        public string price { set; get; }
     }
 }
